@@ -73,17 +73,17 @@ class Light:
 
 class Material:
 	def __init__(self, params):
-		self.dr = float(params[0])
+		self.dr = float(params[0]) # diffuse color (r,g,b)
 		self.dg = float(params[1])
 		self.db = float(params[2])
-		self.sr = float(params[3])
+		self.sr = float(params[3]) # specular color (r,g,b)
 		self.sg = float(params[4])
 		self.sb = float(params[5])
-		self.rr = float(params[6])
+		self.rr = float(params[6]) # reflection color (r,g,b)
 		self.rg = float(params[7])
 		self.rb = float(params[8])
-		self.phong = int(params[9])
-		self.trans = float(params[10])
+		self.phong = int(params[9]) # phong specularity coefficient (shininess)
+		self.trans = float(params[10]) # transparency value between 0 and 1
 
 
 def line_to_params(line):
