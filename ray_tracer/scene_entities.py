@@ -23,7 +23,8 @@ class Camera:
 		self.up_z = float(params[8]) 
 		self.sc_dist = float(params[9])
 		self.sc_width = float(params[10])
-		self.fisheye = params[11] == '1'  # use fisheye if true o.w. use pinhole
+		# use fisheye if true o.w. use pinhole (optional)
+		self.fisheye = params[11] == 'true' if len(params) > 11 else False 
 		self.k_val = float(params[12]) if len(params) > 12 else 0.5  # optional
 
 
@@ -89,7 +90,6 @@ def line_to_params(line):
 	line = line.strip()
 	return line.split()
 
-
 class Scene:
 	def __init__(self, scene_file, scene_out):
 		self.planes = []
@@ -134,5 +134,7 @@ class Scene:
 if "__main__":
 	env_path = r"C:\dev\graphics\ray_tracer\scenes\Pool.txt"
 	out_path = r"C:\dev\graphics\ray_tracer\scenes\Pool_test.png"
+	# env_path = r"scenes\Pool.txt"
+	# out_path = r"scenes\Pool_test.png"
 	scene_object = Scene(env_path, out_path)
 	print('done')
