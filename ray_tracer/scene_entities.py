@@ -1,4 +1,6 @@
+from typing import Optional
 
+import numpy as np
 
 # General setting for a scene
 class Sett:
@@ -26,6 +28,9 @@ class Camera:
 		self.fisheye = params[11] == '1'  # use fisheye if true o.w. use pinhole
 		self.k_val = float(params[12]) if len(params) > 12 else 0.5  # optional
 
+		self.pos_3d = np.array([self.pos_x, self.pos_y, self.pos_z])
+		self.look_at_3d = np.array([self.look_x, self.look_y, self.look_z])
+		self.up_3d = np.array([self.up_x, self.up_y, self.up_z])
 
 class Plane:
 	def __init__(self, params):
@@ -98,7 +103,7 @@ class Scene:
 		self.lights = []
 		self.materials = []
 		self.scene_out = scene_out
-		self.camera = None
+		self.camera = None  # type: Optional[Camera]
 		self.sett = None
 		self.parse(scene_file)
 
