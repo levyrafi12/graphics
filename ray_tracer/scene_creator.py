@@ -43,13 +43,15 @@ def ray_casting(scene: Scene, width=500, height=500):
     # rotate from world coord to view coord
     Vx, Vy, _ = rotate_to_view_coord(M, toward_vector)
     # set screen original point
-    P0 = screen_center_point - width * Vx - height * Vy   
+    screen_orig_point = screen_center_point - width * Vx - height * Vy
+     
+    P0 = screen_orig_point
+    camera_position = np.array([camera.pos_x, camera.pos_y, camera.pos_z])
 
     for i in range(height):
         p = P0
         for j in range(width):
             pixel = np.array([i, j, 0])
-            camera_position = np.array([camera.pos_x, camera.pos_y, camera.pos_z])
             ray = camera_position, p - camera_position
             # ray = create_ray(camera, i, j)
             # intersection = find_intersection(ray, scene)
@@ -57,7 +59,8 @@ def ray_casting(scene: Scene, width=500, height=500):
             # screen[i][j][0] = color[0]
             # screen[i][j][1] = color[1]
             # screen[i][j][2] = color[2]
-
+            p += Vx
+        P0 += Vy
 
 env_path = r"C:\dev\graphics\ray_tracer\scenes\Pool.txt"
 out_path = r"C:\dev\graphics\ray_tracer\scenes\Pool_test.png"
