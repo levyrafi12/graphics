@@ -1,3 +1,6 @@
+import math
+
+import matplotlib.pyplot as plt
 from ray_tracer.scene_entities import Scene, Camera
 import numpy as np
 
@@ -5,7 +8,40 @@ import numpy as np
 def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
 
-def find_intersection(ray, scene):
+
+def find_intersections(ray_origin, ray_direction, scene: Scene):
+    intersections = []
+
+    for sphere in scene.spheres:
+        L = sphere.center_3d - ray_origin
+        t_ca = np.dot(L, ray_direction)
+        if t_ca < 0:
+            continue  # no intersection
+
+        d_power2 = np.dot(L, L) - t_ca * t_ca
+
+        r_power2 = math.pow(sphere.radius, 2)
+        if d_power2 > sphere.radius * sphere.radius:
+            continue  # the intersection is outside of the sphere
+
+        t_hc = math.sqrt(r_power2 - d_power2)
+        intersection_point = t_ca - t_hc
+
+        intersections.append([intersection_point, sphere])
+
+    return intersections
+
+
+def get_color(intersections, scene):
+
+    if len(intersections) == 0:
+        return np.array([0, 0, 0])  # return black
+
+    intersection_object = min(intersections, key=lambda t: t[0])
+    material = intersection_object[1].get_material(scene)
+
+    return material.difuse_color
+
 
 # Rotate matrix from world coord to view coord
 def set_rotate_mat(toward_vec):
@@ -49,6 +85,7 @@ def ray_casting(scene: Scene, width=500, height=500):
      
     P0 = screen_orig_point
     camera_position = camera.pos_3d
+    screen = np.zeros((height, width, 3))
 
     for i in range(height):
         p = P0
@@ -56,13 +93,17 @@ def ray_casting(scene: Scene, width=500, height=500):
             ray_origin = camera_position
             ray_direction = p - camera_position
             # ray = create_ray(camera, i, j)
-            # intersection = find_intersection(ray, scene)
-            # color = get_color(intersection)
-            # screen[i][j][0] = color[0]
-            # screen[i][j][1] = color[1]
-            # screen[i][j][2] = color[2]
+            intersections = find_intersections(ray_origin, ray_direction, scene)
+            color = get_color(intersections, scene)
+            screen[i][j] = color
             p += Vx
         P0 += Vy
+
+    plt.imshow(np.ones((500, 500, 3)))
+    plt.show()
+
+    plt.imshow(screen)
+    plt.show()
 
 env_path = r"C:\dev\graphics\ray_tracer\scenes\Pool.txt"
 out_path = r"C:\dev\graphics\ray_tracer\scenes\Pool_test.png"

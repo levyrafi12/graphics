@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 
+
 # General setting for a scene
 class Sett:
 	def __init__(self, params):
@@ -32,6 +33,7 @@ class Camera:
 		self.look_at_3d = np.array([self.look_x, self.look_y, self.look_z])
 		self.up_3d = np.array([self.up_x, self.up_y, self.up_z])
 
+
 class Plane:
 	def __init__(self, params):
 		self.nx = float(params[0])  # normal vector (nx,ny,nz)
@@ -48,6 +50,10 @@ class Sphere:
 		self.cz = float(params[2])
 		self.radius = float(params[3])
 		self.mat_ind = int(params[4])
+
+	@property
+	def center_3d(self):
+		return np.array([self.cx, self.cy, self.cz])
 
 	def get_material(self, scene):
 		return scene.materials[self.mat_ind]
@@ -88,6 +94,10 @@ class Material:
 		self.rb = float(params[8])
 		self.phong = int(params[9])
 		self.trans = float(params[10])
+
+	@property
+	def difuse_color(self):
+		return np.array([self.dr, self.dg, self.db])
 
 
 def line_to_params(line):
