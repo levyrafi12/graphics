@@ -1,3 +1,6 @@
+from typing import Optional
+
+import numpy as np
 
 
 # General setting for a scene
@@ -27,6 +30,10 @@ class Camera:
 		self.fisheye = params[11] == 'true' if len(params) > 11 else False 
 		self.k_val = float(params[12]) if len(params) > 12 else 0.5  # optional
 
+		self.pos_3d = np.array([self.pos_x, self.pos_y, self.pos_z])
+		self.look_at_3d = np.array([self.look_x, self.look_y, self.look_z])
+		self.up_3d = np.array([self.up_x, self.up_y, self.up_z])
+
 
 class Plane:
 	def __init__(self, params):
@@ -43,7 +50,11 @@ class Sphere:
 		self.cy = float(params[1])
 		self.cz = float(params[2])
 		self.radius = float(params[3])
-		self.mat_ind = int(params[4])
+		self.mat_ind = int(params[4]) - 1
+
+	@property
+	def center_3d(self):
+		return np.array([self.cx, self.cy, self.cz])
 
 	def get_material(self, scene):
 		return scene.materials[self.mat_ind]
@@ -85,6 +96,10 @@ class Material:
 		self.phong = int(params[9]) # phong specularity coefficient (shininess)
 		self.trans = float(params[10]) # transparency value between 0 and 1
 
+	@property
+	def difuse_color(self):
+		return np.array([self.dr, self.dg, self.db])
+
 
 def line_to_params(line):
 	line = line.strip()
@@ -98,7 +113,7 @@ class Scene:
 		self.lights = []
 		self.materials = []
 		self.scene_out = scene_out
-		self.camera = None
+		self.camera = None  # type: Optional[Camera]
 		self.sett = None
 		self.parse(scene_file)
 
