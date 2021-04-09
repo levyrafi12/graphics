@@ -13,6 +13,22 @@ def normalize_vector(vector):
 def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
 
+    for box in scene.boxes:
+        pass
+
+    for plane in scene.planes:
+        denom = np.dot(plane.normal_vector, ray_direction)
+
+        plane_point = plane.normal_vector * plane.offset
+
+        vec = plane_point - ray_origin
+        dist = np.dot(vec, plane.normal_vector) / denom
+
+        if dist < 0:
+            continue
+
+        intersections.append([dist, plane])
+
     for sphere in scene.spheres:
         L = sphere.center_3d - ray_origin
         t_ca = np.dot(L, ray_direction)
@@ -26,15 +42,14 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
             continue  # the intersection is outside of the sphere
 
         t_hc = math.sqrt(r_power2 - d_power2)
-        intersection_point = min(t_ca - t_hc, t_ca + t_hc)
+        intersection_distance = min(t_ca - t_hc, t_ca + t_hc)
 
-        intersections.append([intersection_point, sphere])
+        intersections.append([intersection_distance, sphere])
 
     return intersections
 
 
 def get_color(intersections, scene):
-
     if len(intersections) == 0:
         return np.array([0, 0, 0])  # return black
 

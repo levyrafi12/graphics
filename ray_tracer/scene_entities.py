@@ -41,7 +41,14 @@ class Plane:
 		self.ny = float(params[1])
 		self.nz = float(params[2])
 		self.offset = float(params[3])
-		self.mat_ind = int(params[4])
+		self.mat_ind = int(params[4]) - 1
+
+	@property
+	def normal_vector(self):
+		return np.array([self.nx, self.ny, self.nz])
+
+	def get_material(self, scene):
+		return scene.materials[self.mat_ind]
 
 
 class Sphere:
@@ -66,7 +73,10 @@ class Box:
 		self.pos_y = float(params[1])
 		self.pos_z = float(params[2])
 		self.edge = float(params[3])
-		self.mat_ind = int(params[4])
+		self.mat_ind = int(params[4]) - 1
+
+	def get_material(self, scene):
+		return scene.materials[self.mat_ind]
 
 
 class Light:
