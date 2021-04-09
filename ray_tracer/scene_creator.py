@@ -9,7 +9,7 @@ def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
 
 
-def find_intersections(ray_origin, ray_direction, scene: Scene):
+def find_intersections2(ray_origin, ray_direction, scene: Scene):
     intersections = []
 
     for sphere in scene.spheres:
@@ -18,16 +18,35 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
         if t_ca < 0:
             continue  # no intersection
 
-        d_power2 = np.dot(L, L) - t_ca * t_ca
+        d_power2 = np.dot(L, L) - t_ca ** 2
 
-        r_power2 = math.pow(sphere.radius, 2)
-        if d_power2 > sphere.radius * sphere.radius:
+        r_power2 = sphere.radius ** 2
+        if d_power2 > r_power2:
             continue  # the intersection is outside of the sphere
 
         t_hc = math.sqrt(r_power2 - d_power2)
-        intersection_point = t_ca - t_hc
+        intersection_point = min(t_ca - t_hc, t_ca + t_hc)
 
         intersections.append([intersection_point, sphere])
+
+    return intersections
+
+
+def find_intersections(ray_origin, ray_direction, scene: Scene):
+    intersections = []
+
+    for sphere in scene.spheres:
+        L = ray_origin - sphere.center_3d
+        b = 2 * np.dot(ray_direction, L)
+
+        c = np.linalg.norm(L) ** 2 - sphere.radius ** 2
+
+        delta = b ** 2 - 4 * c
+        if delta > 0:
+            t1 = (-b + np.sqrt(delta)) / 2
+            t2 = (-b - np.sqrt(delta)) / 2
+            if t1 > 0 and t2 > 0:
+                intersections.append([min(t1, t2), sphere])
 
     return intersections
 
@@ -64,43 +83,38 @@ def rotate_to_view_coord(M):
     return Vx, Vy, Vz
 
 
-def ray_casting(scene: Scene, width=500, height=500):
+def ray_casting(scene: Scene, image_width=500, image_height=500):
     camera = scene.camera
-    # Tomer: towards_vector = normalize_vector(camera.look_at_3d - camera.pos_3d)
-    # https://www.cs.tau.ac.il/~dcor/Graphics/cg-slides/view04.pdf (slide 3)
-    # (P0 - P) / |P0 - P| where P0 is the eye/camera point and P is the look-at point
-    towards_vector = normalize_vector(camera.pos_3d - camera.look_at_3d)
-
-    # define matrix M
-    M = set_rotate_mat(towards_vector)
-    # rotate from world coord to view coord
-    Vx, Vy, Vz = rotate_to_view_coord(M)
-
-    assert np.linalg.norm(towards_vector - Vz) <= 0.0001
+    Vz = normalize_vector(camera.look_at_3d - camera.pos_3d)
 
     # set screen original point
+    screen_center_point = camera.pos_3d + camera.sc_dist * Vz
 
-    screen_center_point = camera.pos_3d + camera.sc_dist * towards_vector
-    screen_orig_point = screen_center_point - width * Vx - height * Vy
+    screen_aspect_ratio = image_width / image_height
+    screen_width = camera.sc_width
+    screen_height = screen_width / screen_aspect_ratio
+
+    Vy = (normalize_vector(camera.up_3d) * screen_height) / image_height
+    Vx = (normalize_vector(np.cross(Vz, Vy)) * screen_width) / image_width
+
+    screen_orig_point = screen_center_point - (image_width / 2) * Vx - (image_height / 2) * Vy
      
-    P0 = screen_orig_point
-    camera_position = camera.pos_3d
-    screen = np.zeros((height, width, 3))
+    P0 = np.copy(screen_orig_point)
+    screen = np.zeros((image_height, image_width, 3))
 
-    for i in range(height):
-        p = P0
-        for j in range(width):
-            ray_origin = camera_position
-            ray_direction = p - camera_position
+    for i in range(image_height):
+        p = np.copy(P0)
+        for j in range(image_width):
+            ray_direction = normalize_vector(p - camera.pos_3d)
             # ray = create_ray(camera, i, j)
-            intersections = find_intersections(ray_origin, ray_direction, scene)
+            intersections = find_intersections(camera.pos_3d, ray_direction, scene)
             color = get_color(intersections, scene)
             screen[i][j] = color
             p += Vx
         P0 += Vy
 
-    plt.imshow(np.ones((500, 500, 3)))
-    plt.show()
+    # plt.imshow(np.ones((500, 500, 3)))
+    # plt.show()
 
     plt.imshow(screen)
     plt.show()
@@ -109,3 +123,5 @@ env_path = r"C:\dev\graphics\ray_tracer\scenes\Pool.txt"
 out_path = r"C:\dev\graphics\ray_tracer\scenes\Pool_test.png"
 scene = Scene(env_path, out_path)
 ray_casting(scene)
+
+
