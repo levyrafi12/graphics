@@ -49,7 +49,7 @@ class Sphere:
 		self.cy = float(params[1])
 		self.cz = float(params[2])
 		self.radius = float(params[3])
-		self.mat_ind = int(params[4])
+		self.mat_ind = int(params[4]) - 1
 
 	@property
 	def center_3d(self):
