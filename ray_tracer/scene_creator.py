@@ -94,8 +94,8 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
     screen_width = camera.sc_width
     screen_height = screen_width / screen_aspect_ratio
 
-    Vy = (normalize_vector(camera.up_3d) * screen_height) / image_height
-    Vx = (normalize_vector(np.cross(Vz, Vy)) * screen_width) / image_width
+    Vx = (normalize_vector(np.cross(Vz, camera.up_3d)) * screen_width) / image_width
+    Vy = (normalize_vector(np.cross(Vx, Vz)) * screen_height) / image_height
 
     screen_orig_point = screen_center_point - (image_width / 2) * Vx - (image_height / 2) * Vy
      
