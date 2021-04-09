@@ -26,7 +26,8 @@ class Camera:
 		self.up_z = float(params[8]) 
 		self.sc_dist = float(params[9])
 		self.sc_width = float(params[10])
-		self.fisheye = params[11] == '1'  # use fisheye if true o.w. use pinhole
+		# use fisheye if true o.w. use pinhole (optional)
+		self.fisheye = params[11] == 'true' if len(params) > 11 else False 
 		self.k_val = float(params[12]) if len(params) > 12 else 0.5  # optional
 
 		self.pos_3d = np.array([self.pos_x, self.pos_y, self.pos_z])
@@ -83,17 +84,17 @@ class Light:
 
 class Material:
 	def __init__(self, params):
-		self.dr = float(params[0])
+		self.dr = float(params[0]) # diffuse color (r,g,b)
 		self.dg = float(params[1])
 		self.db = float(params[2])
-		self.sr = float(params[3])
+		self.sr = float(params[3]) # specular color (r,g,b)
 		self.sg = float(params[4])
 		self.sb = float(params[5])
-		self.rr = float(params[6])
+		self.rr = float(params[6]) # reflection color (r,g,b)
 		self.rg = float(params[7])
 		self.rb = float(params[8])
-		self.phong = int(params[9])
-		self.trans = float(params[10])
+		self.phong = int(params[9]) # phong specularity coefficient (shininess)
+		self.trans = float(params[10]) # transparency value between 0 and 1
 
 	@property
 	def difuse_color(self):
@@ -103,7 +104,6 @@ class Material:
 def line_to_params(line):
 	line = line.strip()
 	return line.split()
-
 
 class Scene:
 	def __init__(self, scene_file, scene_out):
@@ -149,5 +149,7 @@ class Scene:
 if "__main__":
 	env_path = r"C:\dev\graphics\ray_tracer\scenes\Pool.txt"
 	out_path = r"C:\dev\graphics\ray_tracer\scenes\Pool_test.png"
+	# env_path = r"scenes\Pool.txt"
+	# out_path = r"scenes\Pool_test.png"
 	scene_object = Scene(env_path, out_path)
 	print('done')
