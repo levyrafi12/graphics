@@ -9,7 +9,7 @@ class Sett:
 		self.bg_r = float(params[0])  # background colors (r,g,b)
 		self.bg_g = float(params[1])
 		self.bg_b = float(params[2])
-		self.shadow_rays = float(params[3])  # (N = root number of shadow rays)
+		self.shadow_rays = int(params[3])  # (N = root number of shadow rays)
 		self.rec_max = float(params[4])  # max number of recursions
 
 
@@ -41,8 +41,14 @@ class Plane:
 		self.ny = float(params[1])
 		self.nz = float(params[2])
 		self.offset = float(params[3])
-		self.mat_ind = int(params[4])
+		self.mat_ind = int(params[4]) - 1
 
+	@property
+	def normal_3d(self):
+		return np.array([self.nx, self.ny, self.nz])
+
+	def get_material(self, scene):
+		return scene.materials[self.mat_ind]
 
 class Sphere:
 	def __init__(self, params):
@@ -81,6 +87,14 @@ class Light:
 		self.shadow = float(params[7])  # shadow intensity
 		self.width = float(params[8])  # light width or radius (used for soft shadow)
 
+	@property
+	def pos_3d(self):
+		return np.array([self.pos_x, self.pos_y, self.pos_z])
+
+	@property
+	def color_3d(self):
+		return np.array([self.color_r, self.color_g, self.color_b])
+
 
 class Material:
 	def __init__(self, params):
@@ -118,11 +132,11 @@ class Scene:
 		self.parse(scene_file)
 
 	def parse(self, scene_file):
-		print(scene_file)
+		# print(scene_file)
 		f = open(scene_file, "r")
 		lines = f.readlines()
 		for line in lines:
-			print(line)
+			# print(line)
 			params = line_to_params(line)
 			if len(params) == 0:
 				continue
@@ -146,10 +160,8 @@ class Scene:
 				print("Bad param {}".format(params[0]))
 
 
-if "__main__":
-	env_path = r"C:\dev\graphics\ray_tracer\scenes\Pool.txt"
-	out_path = r"C:\dev\graphics\ray_tracer\scenes\Pool_test.png"
-	# env_path = r"scenes\Pool.txt"
-	# out_path = r"scenes\Pool_test.png"
+if __name__ == "__main__":
+	env_path = r"scenes\Pool.txt"
+	out_path = r"Pool_test.png"
 	scene_object = Scene(env_path, out_path)
 	print('done')
