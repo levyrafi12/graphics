@@ -1,7 +1,6 @@
 import math
 
 import matplotlib.pyplot as plt
-from scene_entities import Scene, Camera
 import numpy as np
 import random
 import time
@@ -12,11 +11,13 @@ from ray_tracer.scene_entities import Scene
 def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
 
+
 def find_nearest_object(intersections):
     if len(intersections) == 0:
         return None
 
     return min(intersections, key=lambda t: t[0])
+
 
 def arbitrary_vector_in_plane(normal, D, xyz):
     V = np.zeros(3)
@@ -25,6 +26,7 @@ def arbitrary_vector_in_plane(normal, D, xyz):
             V[i] = -D / normal[i]
             break
     return normalize_vector(xyz - V)
+
 
 def soft_shadow(intersect_object, scene):
     intersect_point = intersect_object[1]
@@ -51,7 +53,7 @@ def soft_shadow(intersect_object, scene):
                 ray = normalize_vector(intersect_point - P)
                 intersections = find_intersections(P, ray, scene)
                 object = find_nearest_object(intersections)
-                if object == None:
+                if object is None:
                     continue
                 if object[2] == intersect_object[2]:
                     num_hits += 1
@@ -62,17 +64,14 @@ def soft_shadow(intersect_object, scene):
 
         return light_intensity
 
-def find_plane_intersections(ray_origin, ray_direction, scene: Scene):
-    intersections = []
 
-    for plane in scene.planes:
-        N = plane.normal_3d
-        d = -plane.offset
-        t = -(np.dot(ray_origin, N) + d) / np.dot(ray_direction, N)
-        intersection_point = ray_origin + t * ray_direction
-        intersections.append((t, intersection_point, plane))
+def get_plane_intersection(ray_origin, ray_direction, plane):
+    N = plane.normal_3d
+    d = -plane.offset
+    t = -(np.dot(ray_origin, N) + d) / np.dot(ray_direction, N)
+    intersection_point = ray_origin + t * ray_direction
+    return t, intersection_point, plane
 
-    return intersections
 
 def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
@@ -81,17 +80,7 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
         pass
 
     for plane in scene.planes:
-        denom = np.dot(plane.normal_vector, ray_direction)
-
-        plane_point = plane.normal_vector * plane.offset
-
-        vec = plane_point - ray_origin
-        dist = np.dot(vec, plane.normal_vector) / denom
-
-        if dist < 0:
-            continue
-
-        intersections.append([dist, plane])
+        intersections.append(get_plane_intersection(ray_origin, ray_direction, plane))
 
     for sphere in scene.spheres:
         # geometric method
@@ -107,43 +96,17 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
             continue  # the intersection is outside of the sphere
 
         t_hc = math.sqrt(r_power2 - d_power2)
-        t = min(t_ca - t_hc, t_ca + t_hc) # distance
+        t = min(t_ca - t_hc, t_ca + t_hc)  # distance
         intersection_point = ray_origin + t * ray_direction
         intersections.append((t, intersection_point, sphere))
 
-    plane_intersects = find_plane_intersections(ray_origin, ray_direction, scene)
+    return intersections
 
-    return intersections + plane_intersects
-
-# ray_origin + t * ray_direction (P = P0 + t * V)
-def find_intersections(ray_origin, ray_direction, scene: Scene):
-    intersections = []
-
-    for sphere in scene.spheres:
-        # algebric method
-        L = ray_origin - sphere.center_3d
-        b = 2 * np.dot(ray_direction, L)
-
-        c = np.linalg.norm(L) ** 2 - sphere.radius ** 2
-
-        delta = b ** 2 - 4 * c
-        if delta > 0:
-            delta_sqrt = np.sqrt(delta)
-            t1 = (-b + delta_sqrt) / 2
-            t2 = (-b - delta_sqrt) / 2
-            if t1 > 0 and t2 > 0:
-                t = min(t1, t2) # distance
-                intersection_point = ray_origin + t * ray_direction
-                intersections.append((t, intersection_point, sphere))
-
-    plane_intersects = find_plane_intersections(ray_origin, ray_direction, scene)
-
-    return intersections + plane_intersects
 
 def get_color(intersections, scene):
 
     intersection_object = find_nearest_object(intersections)
-    if intersection_object == None:
+    if intersection_object is None:
         return np.array([0, 0, 0])  # return black
 
     material = intersection_object[2].get_material(scene)
@@ -152,6 +115,7 @@ def get_color(intersections, scene):
     light_intensity = soft_shadow(intersection_object, scene)
 
     return material.difuse_color * light_intensity
+
 
 def ray_casting(scene: Scene, image_width=500, image_height=500):
     # print(time.ctime())
