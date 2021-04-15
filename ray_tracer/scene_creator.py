@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scene_entities import Scene, Camera
 import numpy as np
 import random
+import time
 
 def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
@@ -13,43 +14,52 @@ def find_nearest_object(intersections):
         return None
 
     return min(intersections, key=lambda t: t[0])
-
-def perpendicular_plane_to_ray(point, normal):
-    D = -np.dot(point, normal)
-    return normal[0], normal[1], normal[2], D
    
-def soft_shadow(intersection_object, scene):
-    intersect_point = intersection_object[1]
+def arbitrary_vector_in_plane(normal, D, intersect_point):
+    V = np.zeros(3)
+    for i in range(3):
+        if normal[i] != 0:
+            V[i] = -normal[i] / D
+    return normalize_vector(V - intersect_point)
+
+def soft_shadow(intersect_object, scene):
+    intersect_point = intersect_object[1]
 
     N = scene.sett.shadow_rays
     light_intensity = 0
     for light in scene.lights:
         L = normalize_vector(intersect_point - light.pos_3d)
-        A,B,C,D = perpendicular_plane_to_ray(light.pos_3d, L)
-        cell_edge = light.width / N
-        half_width = light.width / 2
-        square_origin_x = light.pos_3d[0] - half_width
-        square_origin_y = light.pos_3d[1] - half_width
+        # coefficients of perpendicular plane to the ray 
+        # from light to intersection point
+        D = -np.dot(light.pos_3d, L)
+        A,B,C = L[0], L[1], L[2]
+
+        V1 = arbitrary_vector_in_plane(L, D, intersect_point) / light.width
+        V2 = np.cross(V1, L) / light.width
+        square_origin_point = light.pos_3d - (light.width / 2) * V1 - (light.width / 2) * V2
         num_hits = 0
-        P_y = square_origin_y - cell_edge
+        cell_edge = light.width / N
+        P0 = np.copy(square_origin_point)
 
         for i in range(N):
-            P_x = square_origin_x - cell_edge
-            P_y += cell_edge + random.uniform(0, cell_edge)
+            P = np.copy(P0)
+            P += V2 * random.uniform(0, cell_edge)
             for j in range(N):
-                P_x += cell_edge + random.uniform(0, cell_edge)
-                P_z = (-D - A * P_x - B * P_y) / C
-                P = np.array([P_x, P_y, P_z])
+                P += V1 * random.uniform(0, cell_edge)
+                # P[2] = (-A * P[0]  -B * P[1] - D) / C
                 ray = normalize_vector(intersect_point - P)
                 intersections = find_intersections(P, ray, scene)
                 object = find_nearest_object(intersections)
                 if object == None:
                     continue
-                if object[2] == intersection_object[2]:
+                if object[2] == intersect_object[2]:
                     num_hits += 1
+                P += cell_edge * V1
+            P0 += cell_edge * V2
 
         hit_ratio = num_hits / (N * N)
-        light_intensity += (1 - light.shadow) + light.shadow * hit_ratio
+        opaque_ratio = (1 - intersect_object[2].get_material(scene).trans)
+        light_intensity += ((1 - light.shadow) + light.shadow * hit_ratio) * opaque_ratio
 
         return light_intensity
 
@@ -84,19 +94,16 @@ def find_intersections2(ray_origin, ray_direction, scene: Scene):
         t_hc = math.sqrt(r_power2 - d_power2)
         t = min(t_ca - t_hc, t_ca + t_hc) # distance
         intersection_point = ray_origin + t * ray_direction
-
         intersections.append((t, intersection_point, sphere))
 
     plane_intersects = find_plane_intersections(ray_origin, ray_direction, scene)
-    intersections += plane_intersects            
 
-    return intersections
+    return intersections + plane_intersects
 
 # ray_origin + t * ray_direction (P = P0 + t * V)
 def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
 
-    found_sphere = False
     for sphere in scene.spheres:
         # algebric method
         L = ray_origin - sphere.center_3d
@@ -113,12 +120,10 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
                 t = min(t1, t2) # distance
                 intersection_point = ray_origin + t * ray_direction
                 intersections.append((t, intersection_point, sphere))
-                found_sphere = True
 
     plane_intersects = find_plane_intersections(ray_origin, ray_direction, scene)
-    intersections += plane_intersects
 
-    return intersections
+    return intersections + plane_intersects
 
 def get_color(intersections, scene):
 
@@ -154,8 +159,9 @@ def rotate_to_view_coord(M):
     return Vx, Vy, Vz
 
 def ray_casting(scene: Scene, image_width=500, image_height=500):
+    # print(time.ctime())
     camera = scene.camera
-    Vz = normalize_vector(camera.look_at_3d - camera.pos_3d)
+    Vz = normalize_vector(camera.look_at_3d - camera.pos_3d) # towards
 
     # set screen original point
     screen_center_point = camera.pos_3d + camera.sc_dist * Vz
@@ -164,7 +170,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
     screen_width = camera.sc_width
     screen_height = screen_width / screen_aspect_ratio
 
-    Vx = (normalize_vector(np.cross(camera.up_3d, Vz)) * screen_width) / image_width
+    Vx = (normalize_vector(np.cross(camera.up_3d, Vz)) * screen_width) / image_width # right
     Vy = (normalize_vector(np.cross(Vx, Vz)) * screen_height) / image_height
 
     screen_orig_point = screen_center_point - (image_width / 2) * Vx - (image_height / 2) * Vy
@@ -173,19 +179,22 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
     screen = np.zeros((image_height, image_width, 3))
 
     for i in range(image_height):
+        if i % 50 == 0:
+             print(time.ctime())
         p = np.copy(P0)
         for j in range(image_width):
             ray_direction = normalize_vector(p - camera.pos_3d)
             # ray = create_ray(camera, i, j)
             intersections = find_intersections(camera.pos_3d, ray_direction, scene)
             color = get_color(intersections, scene)
-            screen[i][j] = color
+            screen[i][j] = np.clip(color, 0, 1)
             p += Vx
         P0 += Vy
 
     # plt.imshow(np.ones((500, 500, 3)))
     # plt.show()
 
+    print(time.ctime())
     plt.imshow(screen)
     plt.show()
 
