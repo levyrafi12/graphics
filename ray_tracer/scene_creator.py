@@ -15,12 +15,13 @@ def find_nearest_object(intersections):
 
     return min(intersections, key=lambda t: t[0])
    
-def arbitrary_vector_in_plane(normal, D, intersect_point):
+def arbitrary_vector_in_plane(normal, D, xyz):
     V = np.zeros(3)
     for i in range(3):
         if normal[i] != 0:
-            V[i] = -normal[i] / D
-    return normalize_vector(V - intersect_point)
+            V[i] = -D / normal[i]
+            break
+    return normalize_vector(xyz - V)
 
 def soft_shadow(intersect_object, scene):
     intersect_point = intersect_object[1]
@@ -32,21 +33,18 @@ def soft_shadow(intersect_object, scene):
         # coefficients of perpendicular plane to the ray 
         # from light to intersection point
         D = -np.dot(light.pos_3d, L)
-        A,B,C = L[0], L[1], L[2]
 
-        V1 = arbitrary_vector_in_plane(L, D, intersect_point) / light.width
+        V1 = arbitrary_vector_in_plane(L, D, light.pos_3d) / light.width
         V2 = np.cross(V1, L) / light.width
-        square_origin_point = light.pos_3d - (light.width / 2) * V1 - (light.width / 2) * V2
+        # square origin point
+        P0 = light.pos_3d - (light.width / 2) * V1 - (light.width / 2) * V2
         num_hits = 0
         cell_edge = light.width / N
-        P0 = np.copy(square_origin_point)
 
         for i in range(N):
-            P = np.copy(P0)
-            P += V2 * random.uniform(0, cell_edge)
             for j in range(N):
-                P += V1 * random.uniform(0, cell_edge)
-                # P[2] = (-A * P[0]  -B * P[1] - D) / C
+                P = P0 + V2 * (i * cell_edge + random.uniform(0, cell_edge))
+                P = P + V1 * (j * cell_edge + random.uniform(0, cell_edge))
                 ray = normalize_vector(intersect_point - P)
                 intersections = find_intersections(P, ray, scene)
                 object = find_nearest_object(intersections)
@@ -54,8 +52,6 @@ def soft_shadow(intersect_object, scene):
                     continue
                 if object[2] == intersect_object[2]:
                     num_hits += 1
-                P += cell_edge * V1
-            P0 += cell_edge * V2
 
         hit_ratio = num_hits / (N * N)
         opaque_ratio = (1 - intersect_object[2].get_material(scene).trans)
