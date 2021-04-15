@@ -44,6 +44,13 @@ class Plane:
 		self.mat_ind = int(params[4]) - 1
 
 	@property
+	def normal_vector(self):
+		return np.array([self.nx, self.ny, self.nz])
+
+	def get_material(self, scene):
+		return scene.materials[self.mat_ind]
+
+	@property
 	def normal_3d(self):
 		return np.array([self.nx, self.ny, self.nz])
 
@@ -72,7 +79,10 @@ class Box:
 		self.pos_y = float(params[1])
 		self.pos_z = float(params[2])
 		self.edge = float(params[3])
-		self.mat_ind = int(params[4])
+		self.mat_ind = int(params[4]) - 1
+
+	def get_material(self, scene):
+		return scene.materials[self.mat_ind]
 
 
 class Light:
@@ -98,17 +108,17 @@ class Light:
 
 class Material:
 	def __init__(self, params):
-		self.dr = float(params[0]) # diffuse color (r,g,b)
+		self.dr = float(params[0])  # diffuse color (r,g,b)
 		self.dg = float(params[1])
 		self.db = float(params[2])
-		self.sr = float(params[3]) # specular color (r,g,b)
+		self.sr = float(params[3])  # specular color (r,g,b)
 		self.sg = float(params[4])
 		self.sb = float(params[5])
-		self.rr = float(params[6]) # reflection color (r,g,b)
+		self.rr = float(params[6])  # reflection color (r,g,b)
 		self.rg = float(params[7])
 		self.rb = float(params[8])
-		self.phong = int(params[9]) # phong specularity coefficient (shininess)
-		self.trans = float(params[10]) # transparency value between 0 and 1
+		self.phong = int(params[9])  # phong specularity coefficient (shininess)
+		self.trans = float(params[10])  # transparency value between 0 and 1
 
 	@property
 	def difuse_color(self):
@@ -118,6 +128,7 @@ class Material:
 def line_to_params(line):
 	line = line.strip()
 	return line.split()
+
 
 class Scene:
 	def __init__(self, scene_file, scene_out):

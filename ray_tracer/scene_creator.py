@@ -6,6 +6,9 @@ import numpy as np
 import random
 import time
 
+from ray_tracer.scene_entities import Scene
+
+
 def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
 
@@ -14,7 +17,7 @@ def find_nearest_object(intersections):
         return None
 
     return min(intersections, key=lambda t: t[0])
-   
+
 def arbitrary_vector_in_plane(normal, D, xyz):
     V = np.zeros(3)
     for i in range(3):
@@ -30,7 +33,7 @@ def soft_shadow(intersect_object, scene):
     light_intensity = 0
     for light in scene.lights:
         L = normalize_vector(intersect_point - light.pos_3d)
-        # coefficients of perpendicular plane to the ray 
+        # coefficients of perpendicular plane to the ray
         # from light to intersection point
         D = -np.dot(light.pos_3d, L)
 
@@ -71,8 +74,24 @@ def find_plane_intersections(ray_origin, ray_direction, scene: Scene):
 
     return intersections
 
-def find_intersections2(ray_origin, ray_direction, scene: Scene):
+def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
+
+    for box in scene.boxes:
+        pass
+
+    for plane in scene.planes:
+        denom = np.dot(plane.normal_vector, ray_direction)
+
+        plane_point = plane.normal_vector * plane.offset
+
+        vec = plane_point - ray_origin
+        dist = np.dot(vec, plane.normal_vector) / denom
+
+        if dist < 0:
+            continue
+
+        intersections.append([dist, plane])
 
     for sphere in scene.spheres:
         # geometric method
@@ -134,26 +153,6 @@ def get_color(intersections, scene):
 
     return material.difuse_color * light_intensity
 
-# Rotate matrix from world coord to view coord
-def set_rotate_mat(toward_vec):
-    [a, b, c] = toward_vec
-    Sx = -b
-    Cx = np.sqrt(1 - Sx * Sx)
-    Sy = -a / Cx
-    Cy = c / Cx
-    M = np.array([[Cy, 0, Sy],
-                  [-Sx * Sy, Cx, Sx * Cy],
-                  [-Cx * Cy, -Sx, Cx * Cy]])
-    return M
-
-
-def rotate_to_view_coord(M):
-    Vx = np.matmul(np.array([1,0,0]), M)
-    Vy = np.matmul(np.array([0,1,0]), M)
-    Vz = np.matmul(np.array([0,0,1]), M)
-
-    return Vx, Vy, Vz
-
 def ray_casting(scene: Scene, image_width=500, image_height=500):
     # print(time.ctime())
     camera = scene.camera
@@ -180,23 +179,23 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
         p = np.copy(P0)
         for j in range(image_width):
             ray_direction = normalize_vector(p - camera.pos_3d)
-            # ray = create_ray(camera, i, j)
             intersections = find_intersections(camera.pos_3d, ray_direction, scene)
             color = get_color(intersections, scene)
             screen[i][j] = np.clip(color, 0, 1)
             p += Vx
         P0 += Vy
 
-    # plt.imshow(np.ones((500, 500, 3)))
-    # plt.show()
-
     print(time.ctime())
     plt.imshow(screen)
     plt.show()
 
-env_path = r"scenes\Pool.txt"
-out_path = r"scenes\Pool_test.png"
-scene = Scene(env_path, out_path)
-ray_casting(scene)
+
+def main():
+    env_path = r"scenes\Pool.txt"
+    out_path = r"scenes\Pool_test.png"
+    scene = Scene(env_path, out_path)
+    ray_casting(scene)
 
 
+if __name__ == "__main__":
+    main()
