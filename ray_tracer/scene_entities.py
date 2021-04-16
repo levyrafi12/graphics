@@ -54,8 +54,6 @@ class Plane:
 	def normal_3d(self):
 		return np.array([self.nx, self.ny, self.nz])
 
-	def get_material(self, scene):
-		return scene.materials[self.mat_ind]
 
 class Sphere:
 	def __init__(self, params):

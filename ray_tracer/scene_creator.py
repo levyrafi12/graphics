@@ -117,10 +117,19 @@ def get_color(intersections, scene):
     return material.difuse_color * light_intensity
 
 
+def rotation_vector_around_axis(rotation_radians, vec, rotation_axis):
+    from scipy.spatial.transform import Rotation as R
+
+    rotation_vector = rotation_radians * rotation_axis
+    rotation = R.from_rotvec(rotation_vector)
+    rotated_vec = rotation.apply(vec)
+    return rotated_vec
+
+
 def ray_casting(scene: Scene, image_width=500, image_height=500):
     # print(time.ctime())
     camera = scene.camera
-    Vz = normalize_vector(camera.look_at_3d - camera.pos_3d) # towards
+    Vz = normalize_vector(camera.look_at_3d - camera.pos_3d)  # towards
 
     # set screen original point
     screen_center_point = camera.pos_3d + camera.sc_dist * Vz
@@ -129,7 +138,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
     screen_width = camera.sc_width
     screen_height = screen_width / screen_aspect_ratio
 
-    Vx = (normalize_vector(np.cross(camera.up_3d, Vz)) * screen_width) / image_width # right
+    Vx = (normalize_vector(np.cross(camera.up_3d, Vz)) * screen_width) / image_width  # right
     Vy = (normalize_vector(np.cross(Vx, Vz)) * screen_height) / image_height
 
     screen_orig_point = screen_center_point - (image_width / 2) * Vx - (image_height / 2) * Vy
@@ -138,14 +147,33 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
     screen = np.zeros((image_height, image_width, 3))
 
     for i in range(image_height):
-        if i % 50 == 0:
-             print(time.ctime())
         p = np.copy(P0)
         for j in range(image_width):
-            ray_direction = normalize_vector(p - camera.pos_3d)
-            intersections = find_intersections(camera.pos_3d, ray_direction, scene)
-            color = get_color(intersections, scene)
-            screen[i][j] = np.clip(color, 0, 1)
+            ray_direction_straight = normalize_vector(p - camera.pos_3d)
+
+            if camera.fisheye:
+                radius = np.linalg.norm(p - camera.pos_3d) ** 2 - camera.sc_dist ** 2
+                if radius > 0:
+                    radius = np.sqrt(radius)
+
+                    f = camera.sc_dist
+                    k = camera.k_val
+
+                    theta = np.arctan((k * radius) / f) / k
+
+                    # check degrees
+                    if np.abs(theta * 180 / np.pi) < 90:
+                        ray_direction_fish = rotation_vector_around_axis(theta, Vz, np.cross(ray_direction_straight, Vz))
+
+                        intersections = find_intersections(camera.pos_3d, ray_direction_fish, scene)
+                        color = get_color(intersections, scene)
+                        screen[i][j] = np.clip(color, 0, 1)
+
+            else:  # not fisheye
+                intersections = find_intersections(camera.pos_3d, ray_direction_straight, scene)
+                color = get_color(intersections, scene)
+                screen[i][j] = np.clip(color, 0, 1)
+
             p += Vx
         P0 += Vy
 
