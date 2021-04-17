@@ -11,6 +11,10 @@ def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
 
 
+def length_vector(vector):
+    return np.linalg.norm(vector)
+
+
 def find_nearest_object(intersections):
     if len(intersections) == 0:
         return None
@@ -100,14 +104,6 @@ def soft_shadow(intersect_object, scene):
     return light_intensity_list
 
 
-def get_plane_intersection(ray_origin, ray_direction, plane):
-    N = plane.normal_3d
-    d = -plane.offset
-    t = -(np.dot(ray_origin, N) + d) / np.dot(ray_direction, N)
-    intersection_point = ray_origin + t * ray_direction
-    return t, intersection_point, plane, plane.normal_3d
-
-
 def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
 
@@ -115,7 +111,12 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
         pass
 
     for plane in scene.planes:
-        intersections.append(get_plane_intersection(ray_origin, ray_direction, plane))
+        N = plane.normal_3d
+        d = -plane.offset
+        t = -(np.dot(ray_origin, N) + d) / np.dot(ray_direction, N)
+        intersection_point = ray_origin + t * ray_direction
+        if t > 0:
+            intersections.append((t, intersection_point, plane, plane.normal_3d))
 
     for sphere in scene.spheres:
         # geometric method
@@ -140,21 +141,11 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
 
 
 def get_color(intersections, scene):
-
     intersection_object = find_nearest_object(intersections)
     if intersection_object is None:
-        return np.array([0, 0, 0])  # return black
+        return np.array([1, 1, 1])  # return white
 
     return get_diff_spec_color(intersection_object, scene)
-
-
-def rotation_vector_around_axis(rotation_radians, vec, rotation_axis):
-    from scipy.spatial.transform import Rotation as R
-
-    rotation_vector = rotation_radians * rotation_axis
-    rotation = R.from_rotvec(rotation_vector)
-    rotated_vec = rotation.apply(vec)
-    return rotated_vec
 
 
 def ray_casting(scene: Scene, image_width=500, image_height=500):
@@ -183,28 +174,32 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
             ray_direction_straight = normalize_vector(p - camera.pos_3d)
 
             if camera.fisheye:
-                radius_sqr = np.linalg.norm(p - camera.pos_3d) ** 2 - camera.sc_dist ** 2
-                if radius_sqr > 0:
-                    radius = np.sqrt(radius_sqr)
+                sensor_radius = length_vector(p - screen_center_point)
 
-                    f = camera.sc_dist
-                    k = camera.k_val
-                    if 0 < k <= 1:
-                        theta = np.arctan((k * radius) / f) / k
-                    elif k == 0:
-                        theta = radius / f
-                    elif -1 <= k < 0:
-                        theta = np.arcsin((k * radius) / f) / k
-                    else:
-                        raise Exception("not supported k")
+                f = camera.sc_dist
+                k = camera.k_val
+                if 0 < k <= 1:
+                    theta = np.arctan((k * sensor_radius) / f) / k
+                elif k == 0:
+                    theta = sensor_radius / f
+                elif -1 <= k < 0:
+                    theta = np.arcsin((k * sensor_radius) / f) / k
+                else:
+                    raise Exception("not supported k")
 
-                    # check degrees
-                    if np.abs(theta * 180 / np.pi) < 90:
-                        ray_direction_fish = rotation_vector_around_axis(theta, Vz, np.cross(ray_direction_straight, Vz))
+                # check degrees
+                if theta < np.pi / 2:
+                    image_radius = math.tan(theta) * camera.sc_dist
 
-                        intersections = find_intersections(camera.pos_3d, ray_direction_fish, scene)
-                        color = get_color(intersections, scene)
-                        screen[i][j] = np.clip(color, 0, 1)
+                    mid_to_point = normalize_vector(p - screen_center_point)
+
+                    new_point = screen_center_point + mid_to_point * image_radius
+
+                    ray_direction_fish = normalize_vector(new_point - camera.pos_3d)
+
+                    intersections = find_intersections(camera.pos_3d, ray_direction_fish, scene)
+                    color = get_color(intersections, scene)
+                    screen[i][j] = np.clip(color, 0, 1)
 
             else:  # not fisheye
                 intersections = find_intersections(camera.pos_3d, ray_direction_straight, scene)
