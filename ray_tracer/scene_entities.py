@@ -122,6 +122,10 @@ class Material:
 	def difuse_color(self):
 		return np.array([self.dr, self.dg, self.db])
 
+	@property
+	def spec_color(self):
+		return np.array([self.sr, self.sg, self.sb])
+
 
 def line_to_params(line):
 	line = line.strip()
