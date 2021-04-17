@@ -1,9 +1,8 @@
 import math
+import random
 
 import matplotlib.pyplot as plt
 import numpy as np
-import random
-import time
 
 from ray_tracer.scene_entities import Scene
 
@@ -35,9 +34,9 @@ def get_diff_spec_color(intersect_object, scene):
     if soft_shadow_flag:
         light_intensity_list = soft_shadow(intersect_object, scene)
     else:
-         light_intensity_list = [1] * len(scene.lights)
+        light_intensity_list = [1] * len(scene.lights)
 
-    N = intersect_object[3] # surface normal
+    N = intersect_object[3]  # surface normal
     intersect_point = intersect_object[1]
 
     color = np.zeros(3)
@@ -184,14 +183,20 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
             ray_direction_straight = normalize_vector(p - camera.pos_3d)
 
             if camera.fisheye:
-                radius = np.linalg.norm(p - camera.pos_3d) ** 2 - camera.sc_dist ** 2
-                if radius > 0:
-                    radius = np.sqrt(radius)
+                radius_sqr = np.linalg.norm(p - camera.pos_3d) ** 2 - camera.sc_dist ** 2
+                if radius_sqr > 0:
+                    radius = np.sqrt(radius_sqr)
 
                     f = camera.sc_dist
                     k = camera.k_val
-
-                    theta = np.arctan((k * radius) / f) / k
+                    if 0 < k <= 1:
+                        theta = np.arctan((k * radius) / f) / k
+                    elif k == 0:
+                        theta = radius / f
+                    elif -1 <= k < 0:
+                        theta = np.arcsin((k * radius) / f) / k
+                    else:
+                        raise Exception("not supported k")
 
                     # check degrees
                     if np.abs(theta * 180 / np.pi) < 90:
@@ -209,7 +214,6 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
             p += Vx
         P0 += Vy
 
-    print(time.ctime())
     plt.imshow(screen)
     plt.show()
 
