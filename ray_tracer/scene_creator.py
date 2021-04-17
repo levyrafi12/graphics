@@ -26,7 +26,42 @@ def arbitrary_vector_in_plane(normal, D, xyz):
             V[i] = -D / normal[i]
             break
     return normalize_vector(xyz - V)
-    
+
+def reflected_vector(V, N):
+    return V - 2 * np.dot(V, N) * N
+
+def get_reflection_color(intersect_object, scene):
+    camera = scene.camera
+    bg = scene.sett.background_color_3d
+    k = scene.sett.rec_max
+    intersect_point = intersect_object[1]
+    intersect_surface = intersect_object[2]
+    V = normalize_vector(intersect_point - camera.pos_3d)
+    N = intersect_object[3]
+    R = reflected_vector(V, N)
+    color = np.zeros(3)
+
+    ref_color = intersect_surface.get_material(scene).reflection_color
+
+    for i in range(k):
+        # shifted_point = intersect_point + 1e-5 * N
+        intersections = find_intersections(intersect_point, N, scene)
+        nearest_object = find_nearest_object(intersections)
+        if nearest_object is None:
+            color += ref_color * bg
+            break
+        assert (nearest_object[2] != intersect_surface)
+
+        color += ref_color * get_diff_spec_color(nearest_object, scene)
+        ref_color *= nearest_object[2].get_material(scene).reflection_color
+        intersect_point = nearest_object[1]
+        V = normalize_vector(camera.pos_3d - intersect_point)
+        N = nearest_object[3]
+        R = reflected_vector(V, N)
+        intersect_surface = nearest_object[2]
+
+    return color
+
 def get_diff_spec_color(intersect_object, scene):
     soft_shadow_flag = True
 
@@ -56,6 +91,7 @@ def get_diff_spec_color(intersect_object, scene):
         cos_phi = np.dot(H, N)
         if cos_phi > 0:
             color += Ks * light_intensity_list[i] * np.power(cos_phi, n) * light.color_3d
+
     return color
 
 def soft_shadow(intersect_object, scene):
@@ -85,15 +121,14 @@ def soft_shadow(intersect_object, scene):
                 ray = normalize_vector(intersect_point - P)
                 intersections = find_intersections(P, ray, scene)
                 li_intersect_obj = find_nearest_object(intersections)
-                if object is None:
+                if li_intersect_obj is None:
                     continue
                 if li_intersect_obj[2] == intersect_object[2]: 
                     if np.linalg.norm(intersect_point - li_intersect_obj[1]) < eps:
                         num_hits += 1
 
         hit_ratio = num_hits / (N * N)
-        transparency = intersect_object[2].get_material(scene).trans
-        light_intensity = ((1 - light.shadow) + light.shadow * hit_ratio) * (1 - transparency)
+        light_intensity = ((1 - light.shadow) + light.shadow * hit_ratio)
         light_intensity_list.append(light_intensity)
 
     return light_intensity_list
@@ -103,6 +138,9 @@ def get_plane_intersection(ray_origin, ray_direction, plane):
     N = plane.normal_3d
     d = -plane.offset
     t = -(np.dot(ray_origin, N) + d) / np.dot(ray_direction, N)
+    if t <= 1e-4:
+        return None
+
     intersection_point = ray_origin + t * ray_direction
     return t, intersection_point, plane, plane.normal_3d 
 
@@ -114,7 +152,9 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
         pass
 
     for plane in scene.planes:
-        intersections.append(get_plane_intersection(ray_origin, ray_direction, plane))
+        intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)
+        if intersect_obj != None:
+            intersections.append(intersect_obj)
 
     for sphere in scene.spheres:
         # geometric method
@@ -144,7 +184,12 @@ def get_color(intersections, scene):
     if intersection_object is None:
         return np.array([0, 0, 0])  # return black
 
-    return get_diff_spec_color(intersection_object, scene)
+    transparency = intersection_object[2].get_material(scene).trans
+
+    diff_spec = get_diff_spec_color(intersection_object, scene)
+    ref_color = get_reflection_color(intersection_object, scene)
+    # print(ref_color, diff_spec) 
+    return  diff_spec * (1 - transparency) + ref_color
 
 
 def ray_casting(scene: Scene, image_width=500, image_height=500):
