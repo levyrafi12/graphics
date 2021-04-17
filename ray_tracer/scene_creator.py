@@ -36,7 +36,7 @@ def get_reflection_color(intersect_object, scene):
     k = scene.sett.rec_max
     intersect_point = intersect_object[1]
     intersect_surface = intersect_object[2]
-    V = normalize_vector(intersect_point - camera.pos_3d)
+    V = normalize_vector(camera.pos_3d - intersect_point)
     N = intersect_object[3]
     R = reflected_vector(V, N)
     color = np.zeros(3)
@@ -67,9 +67,9 @@ def get_diff_spec_color(intersect_object, scene):
 
     # list of point light intensity (Ip)
     if soft_shadow_flag: 
-        light_intensity_list = soft_shadow(intersect_object, scene)
+        lig_intensity_list = soft_shadow(intersect_object, scene)
     else:
-         light_intensity_list = [1] * len(scene.lights) 
+         lig_intensity_list = [1] * len(scene.lights) 
 
     N = intersect_object[3] # surface normal
     intersect_point = intersect_object[1]
@@ -82,15 +82,15 @@ def get_diff_spec_color(intersect_object, scene):
 
     for i, light in enumerate(scene.lights):
         # Idiff = Kd * Ip * dot(N,P)
-        L = -normalize_vector(intersect_point - light.pos_3d)
+        L = normalize_vector(light.pos_3d - intersect_point)
         cos_theta = np.dot(N, L)
         if cos_theta > 0:
-            color += Kd * cos_theta * light_intensity_list[i] * light.color_3d
+            color += Kd * cos_theta * lig_intensity_list[i] * light.color_3d
         # Ispec = Ks * Ip * dot(H,N) ** n
         H = normalize_vector(V + L)
         cos_phi = np.dot(H, N)
         if cos_phi > 0:
-            color += Ks * light_intensity_list[i] * np.power(cos_phi, n) * light.color_3d
+            color += Ks * lig_intensity_list[i] * np.power(cos_phi, n) * light.color_3d * light.spec
 
     return color
 
@@ -188,7 +188,8 @@ def get_color(intersections, scene):
 
     diff_spec = get_diff_spec_color(intersection_object, scene)
     ref_color = get_reflection_color(intersection_object, scene)
-    # print(ref_color, diff_spec) 
+    if False and np.linalg.norm(ref_color) > 0.1:
+        print(ref_color, diff_spec) 
     return  diff_spec * (1 - transparency) + ref_color
 
 
