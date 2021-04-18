@@ -45,20 +45,20 @@ def get_reflection_color(intersect_object, scene):
 
     for i in range(k):
         # shifted_point = intersect_point + 1e-5 * N
-        intersections = find_intersections(intersect_point, N, scene)
+        intersections = find_intersections(intersect_point, R, scene)
         nearest_object = find_nearest_object(intersections)
-        if nearest_object is None:
+        if nearest_object is None or nearest_object[2] == intersect_surface:
             color += ref_color * bg
             break
-        assert (nearest_object[2] != intersect_surface)
-
+    
         color += ref_color * get_diff_spec_color(nearest_object, scene)
         ref_color *= nearest_object[2].get_material(scene).reflection_color
-        intersect_point = nearest_object[1]
-        V = normalize_vector(camera.pos_3d - intersect_point)
+
+        V = normalize_vector(intersect_point - nearest_object[1]) 
         N = nearest_object[3]
         R = reflected_vector(V, N)
         intersect_surface = nearest_object[2]
+        intersect_point = nearest_object[1]
 
     return color
 
@@ -77,7 +77,6 @@ def get_diff_spec_color(intersect_object, scene):
     color = np.zeros(3)
     Kd = intersect_object[2].get_material(scene).difuse_color
     Ks = intersect_object[2].get_material(scene).spec_color
-    V = normalize_vector(scene.camera.pos_3d - intersect_point)
     n = intersect_object[2].get_material(scene).phong
 
     for i, light in enumerate(scene.lights):
@@ -87,6 +86,7 @@ def get_diff_spec_color(intersect_object, scene):
         if cos_theta > 0:
             color += Kd * cos_theta * lig_intensity_list[i] * light.color_3d
         # Ispec = Ks * Ip * dot(H,N) ** n
+        V = normalize_vector(scene.camera.pos_3d - intersect_point)
         H = normalize_vector(V + L)
         cos_phi = np.dot(H, N)
         if cos_phi > 0:
