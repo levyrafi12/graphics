@@ -10,8 +10,11 @@ class Sett:
 		self.bg_g = float(params[1])
 		self.bg_b = float(params[2])
 		self.shadow_rays = int(params[3])  # (N = root number of shadow rays)
-		self.rec_max = float(params[4])  # max number of recursions
+		self.rec_max = int(params[4])  # max number of recursions
 
+	@property
+	def background_color_3d(self):
+		return np.array([self.bg_r, self.bg_g, self.bg_b])
 
 class Camera:
 	def __init__(self, params):
@@ -126,6 +129,9 @@ class Material:
 	def spec_color(self):
 		return np.array([self.sr, self.sg, self.sb])
 
+	@property
+	def reflection_color(self):
+		return np.array([self.rr, self.rg, self.rb])
 
 def line_to_params(line):
 	line = line.strip()
