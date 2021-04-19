@@ -153,11 +153,17 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
 
     for box in scene.boxes:
-        pass
+        box_intersection = []
+        for plane in box.planes:
+            intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)
+            if intersect_obj is not None:
+                box_intersection.append(intersect_obj)
+
+        print('g')
 
     for plane in scene.planes:
         intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)
-        if intersect_obj != None:
+        if intersect_obj is not None:
             intersections.append(intersect_obj)
 
     for sphere in scene.spheres:
@@ -193,7 +199,7 @@ def get_color(intersections, scene):
     ref_color = get_reflection_color(intersection_object, scene)
     if False and np.linalg.norm(ref_color) > 0.1:
         print(ref_color, diff_spec)
-    return  diff_spec * (1 - transparency) + ref_color
+    return diff_spec * (1 - transparency) + ref_color
 
 
 def ray_casting(scene: Scene, image_width=500, image_height=500):

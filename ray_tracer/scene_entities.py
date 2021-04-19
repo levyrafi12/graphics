@@ -16,6 +16,7 @@ class Sett:
 	def background_color_3d(self):
 		return np.array([self.bg_r, self.bg_g, self.bg_b])
 
+
 class Camera:
 	def __init__(self, params):
 		self.pos_x = float(params[0])  # camera position (x,y,z)
@@ -39,16 +40,16 @@ class Camera:
 
 
 class Plane:
-	def __init__(self, params):
-		self.nx = float(params[0])  # normal vector (nx,ny,nz)
-		self.ny = float(params[1])
-		self.nz = float(params[2])
-		self.offset = float(params[3])
-		self.mat_ind = int(params[4]) - 1
+	@staticmethod
+	def create_from_params(params):
+		return Plane(float(params[0]), float(params[1]), float(params[2]), float(params[3]), int(params[4]) - 1)
 
-	@property
-	def normal_vector(self):
-		return np.array([self.nx, self.ny, self.nz])
+	def __init__(self, nx, ny, nz, offset, mat_ind):
+		self.nx = nx  # normal vector (nx,ny,nz)
+		self.ny = ny
+		self.nz = nz
+		self.offset = offset
+		self.mat_ind = mat_ind
 
 	def get_material(self, scene):
 		return scene.materials[self.mat_ind]
@@ -79,8 +80,12 @@ class Box:
 		self.pos_x = float(params[0])  # position of center point (cx,cy,cz)
 		self.pos_y = float(params[1])
 		self.pos_z = float(params[2])
-		self.edge = float(params[3])
+		self.edge_length = float(params[3])
 		self.mat_ind = int(params[4]) - 1
+
+	@property
+	def center_3d(self):
+		return np.array([self.pos_x, self.pos_y, self.pos_z])
 
 	def get_material(self, scene):
 		return scene.materials[self.mat_ind]
@@ -133,10 +138,6 @@ class Material:
 	def reflection_color(self):
 		return np.array([self.rr, self.rg, self.rb])
 
-def line_to_params(line):
-	line = line.strip()
-	return line.split()
-
 
 class Scene:
 	def __init__(self, scene_file, scene_out):
@@ -155,12 +156,10 @@ class Scene:
 		f = open(scene_file, "r")
 		lines = f.readlines()
 		for line in lines:
-			# print(line)
-			params = line_to_params(line)
-			if len(params) == 0:
+			line = line.strip()
+			if len(line) == 0 or line[0] == '#':
 				continue
-			if params[0] == '#':
-				continue
+			params = line.split()
 			if params[0] == 'cam':
 				self.camera = Camera(params[1:])
 			elif params[0] == 'set':
@@ -168,7 +167,7 @@ class Scene:
 			elif params[0] == 'mtl':
 				self.materials.append(Material(params[1:]))
 			elif params[0] == 'pln':
-				self.planes.append(Plane(params[1:]))
+				self.planes.append(Plane.create_from_params(params[1:]))
 			elif params[0] == 'sph':
 				self.spheres.append(Sphere(params[1:]))
 			elif params[0] == 'box':
