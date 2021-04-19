@@ -149,17 +149,61 @@ def get_plane_intersection(ray_origin, ray_direction, plane):
     return t, intersection_point, plane, plane.normal_3d 
 
 
+def is_intersected(box, ray_origin, ray_direction):
+    invdir = 1 / ray_direction
+
+    sign = (invdir < 0).astype(np.int)
+
+    bounds = [box.min_bound, box.max_bound]
+    tmin = (bounds[sign[0]][0] - ray_origin[0]) * invdir[0]
+    tmax = (bounds[1 - sign[0]][0] - ray_origin[0]) * invdir[0]
+    tymin = (bounds[sign[1]][1] - ray_origin[1]) * invdir[1]
+    tymax = (bounds[1 - sign[1]][1] - ray_origin[1]) * invdir[1]
+
+    if ((tmin > tymax) or (tymin > tmax)):
+        return False, 0
+
+    if (tymin > tmin):
+        tmin = tymin
+    if (tymax < tmax):
+        tmax = tymax
+
+    tzmin = (bounds[sign[2]][2] - ray_origin[2]) * invdir[2]
+    tzmax = (bounds[1 - sign[2]][2] - ray_origin[2]) * invdir[2]
+
+    if ((tmin > tzmax) or (tzmin > tmax)):
+        return False, 0
+
+    if (tzmin > tmin):
+        tmin = tzmin
+    if (tzmax < tmax):
+        tmax = tzmax
+
+    t = tmin
+
+    if (t < 0):
+        t = tmax
+        if (t < 0):
+            return False, 0
+
+    if t <= 1e-4:
+        return False, 0
+
+    return True, t
+
+
 def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
 
     for box in scene.boxes:
-        box_intersection = []
-        for plane in box.planes:
-            intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)
-            if intersect_obj is not None:
-                box_intersection.append(intersect_obj)
-
-        print('g')
+        return_value = is_intersected(box, ray_origin, ray_direction)
+        if return_value[0]:
+            intersection_point = ray_origin + return_value[1] * ray_direction
+            for plane in box.planes:
+                intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)
+                if intersect_obj is not None:
+                    if np.allclose(intersect_obj[1], intersection_point):
+                        intersections.append(intersect_obj)
 
     for plane in scene.planes:
         intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)

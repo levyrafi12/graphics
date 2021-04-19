@@ -82,6 +82,40 @@ class Box:
 		self.pos_z = float(params[2])
 		self.edge_length = float(params[3])
 		self.mat_ind = int(params[4]) - 1
+		self.planes = []
+
+		self.min_bound = self.center_3d - (self.edge_length / 2)
+		self.max_bound = self.center_3d + (self.edge_length / 2)
+
+		plane_point = self.center_3d + np.array([(self.edge_length / 2), 0, 0])
+		plane_normal = np.sign(np.array([plane_point[0], 0, 0]))
+		d = np.dot(plane_normal, plane_point)
+		self.planes.append(Plane(plane_normal[0], plane_normal[1], plane_normal[2], d, self.mat_ind))
+
+		plane_point = self.center_3d + np.array([0, (self.edge_length / 2), 0])
+		plane_normal = np.sign(np.array([0, plane_point[1], 0]))
+		d = np.dot(plane_normal, plane_point)
+		self.planes.append(Plane(plane_normal[0], plane_normal[1], plane_normal[2], d, self.mat_ind))
+
+		plane_point = self.center_3d + np.array([0, 0, (self.edge_length / 2)])
+		plane_normal = np.sign(np.array([0, 0, plane_point[2]]))
+		d = np.dot(plane_normal, plane_point)
+		self.planes.append(Plane(plane_normal[0], plane_normal[1], plane_normal[2], d, self.mat_ind))
+
+		plane_point = self.center_3d - np.array([(self.edge_length / 2), 0, 0])
+		plane_normal = np.sign(np.array([plane_point[0], 0, 0]))
+		d = np.dot(plane_normal, plane_point)
+		self.planes.append(Plane(plane_normal[0], plane_normal[1], plane_normal[2], d, self.mat_ind))
+
+		plane_point = self.center_3d - np.array([0, (self.edge_length / 2), 0])
+		plane_normal = np.sign(np.array([0, plane_point[1], 0]))
+		d = np.dot(plane_normal, plane_point)
+		self.planes.append(Plane(plane_normal[0], plane_normal[1], plane_normal[2], d, self.mat_ind))
+
+		plane_point = self.center_3d - np.array([0, 0, (self.edge_length / 2)])
+		plane_normal = np.sign(np.array([0, 0, plane_point[2]]))
+		d = np.dot(plane_normal, plane_point)
+		self.planes.append(Plane(plane_normal[0], plane_normal[1], plane_normal[2], d, self.mat_ind))
 
 	@property
 	def center_3d(self):
