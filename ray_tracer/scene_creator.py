@@ -231,7 +231,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
 
 
 def main():
-    env_path = r"scenes\Pool.txt"
+    env_path = r"scenes\Spheres.txt"
     out_path = r"scenes\Pool_test.png"
     scene = Scene(env_path, out_path)
     ray_casting(scene)
