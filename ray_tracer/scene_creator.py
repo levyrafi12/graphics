@@ -200,7 +200,7 @@ def trace_ray_from_camera(intersections, scene):
     V = normalize_vector(intersections[0][1] - scene.camera.pos_3d)
     return get_color(V, intersections, scene, scene.sett.rec_max)
 
-def ray_casting(scene: Scene, image_width=100, image_height=100):
+def ray_casting(scene: Scene, image_width=500, image_height=500):
     print(time.ctime())
     camera = scene.camera
     Vz = normalize_vector(camera.look_at_3d - camera.pos_3d)  # towards
