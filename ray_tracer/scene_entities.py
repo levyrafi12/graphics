@@ -135,11 +135,6 @@ class Material:
 	def reflection_color(self):
 		return np.array([self.rr, self.rg, self.rb])
 
-def line_to_params(line):
-	line = line.strip()
-	return line.split()
-
-
 class Scene:
 	def __init__(self, scene_file, scene_out):
 		self.planes = []
@@ -158,11 +153,10 @@ class Scene:
 		lines = f.readlines()
 		for line in lines:
 			# print(line)
-			params = line_to_params(line)
-			if len(params) == 0:
+			line = line.strip()
+			if len(line) == 0 or line[0] == '#':
 				continue
-			if params[0] == '#':
-				continue
+			params = line.split()
 			if params[0] == 'cam':
 				self.camera = Camera(params[1:])
 			elif params[0] == 'set':
