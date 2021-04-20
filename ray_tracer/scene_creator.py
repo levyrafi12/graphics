@@ -33,7 +33,7 @@ def reflected_vector(V, N):
 
 def get_transparency_color(trace_ray, intersections, scene, rec_depth):
     bg = scene.sett.background_color_3d
-    intersect_object = intersections[0]   
+    intersect_object = intersections[0]
     trans = intersect_object[2].get_material(scene).trans
     if rec_depth <= 0 or trans <= 0:
         return bg
@@ -58,10 +58,10 @@ def get_reflection_color(V, intersect_object, scene, rec_depth):
     if intersections == []:
         return ref_color * bg
 
-    nearest_object = intersections[0] 
+    nearest_object = intersections[0]
     if nearest_object[2] == intersect_surface: # maybe a bug
         return np.zeros(3)
-    
+
     return ref_color * get_color(R, intersections, scene, rec_depth - 1)
 
 def get_diff_spec_color(intersect_object, scene):
@@ -168,15 +168,65 @@ def get_plane_intersection(ray_origin, ray_direction, plane):
     return t, intersection_point, plane, plane.normal_3d 
 
 
+def is_intersected(box, ray_origin, ray_direction):
+    invdir = 1 / ray_direction
+
+    sign = (invdir < 0).astype(np.int)
+
+    bounds = [box.min_bound, box.max_bound]
+    tmin = (bounds[sign[0]][0] - ray_origin[0]) * invdir[0]
+    tmax = (bounds[1 - sign[0]][0] - ray_origin[0]) * invdir[0]
+    tymin = (bounds[sign[1]][1] - ray_origin[1]) * invdir[1]
+    tymax = (bounds[1 - sign[1]][1] - ray_origin[1]) * invdir[1]
+
+    if ((tmin > tymax) or (tymin > tmax)):
+        return False, 0
+
+    if (tymin > tmin):
+        tmin = tymin
+    if (tymax < tmax):
+        tmax = tymax
+
+    tzmin = (bounds[sign[2]][2] - ray_origin[2]) * invdir[2]
+    tzmax = (bounds[1 - sign[2]][2] - ray_origin[2]) * invdir[2]
+
+    if ((tmin > tzmax) or (tzmin > tmax)):
+        return False, 0
+
+    if (tzmin > tmin):
+        tmin = tzmin
+    if (tzmax < tmax):
+        tmax = tzmax
+
+    t = tmin
+
+    if (t < 0):
+        t = tmax
+        if (t < 0):
+            return False, 0
+
+    if t <= 1e-4:
+        return False, 0
+
+    return True, t
+
+
 def find_intersections(ray_origin, ray_direction, scene: Scene):
     intersections = []
 
     for box in scene.boxes:
-        pass
+        return_value = is_intersected(box, ray_origin, ray_direction)
+        if return_value[0]:
+            intersection_point = ray_origin + return_value[1] * ray_direction
+            for plane in box.planes:
+                intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)
+                if intersect_obj is not None:
+                    if np.allclose(intersect_obj[1], intersection_point):
+                        intersections.append(intersect_obj)
 
     for plane in scene.planes:
         intersect_obj = get_plane_intersection(ray_origin, ray_direction, plane)
-        if intersect_obj != None:
+        if intersect_obj is not None:
             intersections.append(intersect_obj)
 
     for sphere in scene.spheres:
@@ -203,15 +253,16 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
 
 def get_color(trace_ray, intersections, scene, rec_depth):
     if intersections == []:
-        return np.array([0, 0, 0])
+        return np.array([1, 1, 1])
 
     intersect_object = intersections[0]
     trans = intersect_object[2].get_material(scene).trans
     trans_color = get_transparency_color(trace_ray, intersections, scene, rec_depth)
     diff_spec = get_diff_spec_color(intersect_object, scene)
     ref_color = get_reflection_color(trace_ray, intersect_object, scene, rec_depth)
-   
-    return  trans * trans_color + (1 - trans) * diff_spec + ref_color
+
+    return trans * trans_color + (1 - trans) * diff_spec + ref_color
+
 
 def trace_ray_from_camera(intersections, scene):
     bg = scene.sett.background_color_3d
