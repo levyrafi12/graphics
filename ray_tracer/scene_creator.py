@@ -7,6 +7,8 @@ import numpy as np
 
 from ray_tracer.scene_entities import Scene
 
+def normalize_matrix(matrix):
+    return np.divide(matrix, np.linalg.norm(matrix, axis=2, keepdims=True))
 
 def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
@@ -190,7 +192,7 @@ def is_intersected(box, ray_origin, ray_direction):
     return True, t
 
 
-def find_intersections(ray_origin, ray_direction, scene: Scene):
+def find_intersections(ray_origin, ray_direction, scene: Scene, ray_direction_normalized=None):
     intersections = []
 
     for box in scene.boxes:
@@ -211,7 +213,8 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
     for sphere in scene.spheres:
         # geometric method
         L = sphere.center_3d - ray_origin
-        t_ca = np.dot(L, ray_direction)
+        t_ca = np.dot(ray_direction, L)
+
         if t_ca < 0:
             continue  # no intersection
 
@@ -221,13 +224,28 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
         if d_power2 > r_power2:
             continue  # the intersection is outside of the sphere
 
-        t_hc = math.sqrt(r_power2 - d_power2)
+        t_hc = np.sqrt(r_power2 - d_power2)
         t = min(t_ca - t_hc, t_ca + t_hc)  # distance
         intersection_point = ray_origin + t * ray_direction
         N = normalize_vector(intersection_point - sphere.center_3d)
         intersections.append((t, intersection_point, sphere, N))
 
-    return sorted(intersections, key=lambda t : t[0])
+
+        L = sphere.center_3d - ray_origin
+        t_ca = np.dot(ray_direction_normalized, L)
+
+        solution_mask = np.logical_not(t_ca < 0)
+        d_power2 = np.dot(L, L) - np.power(t_ca, 2)
+        r_power2 = sphere.radius ** 2
+        solution_mask2 = np.logical_not(d_power2 > r_power2)
+
+        true_solutions = np.logical_and(solution_mask, solution_mask2)
+        t_hc = np.sqrt(r_power2 - d_power2, where=true_solutions)
+        t = np.minimum(t_ca - t_hc, t_ca + t_hc, where=true_solutions)
+        intersection_point = ray_origin + np.multiply(t[..., np.newaxis].repeat(3, axis=2), ray_direction)
+        N = normalize_matrix(intersection_point - sphere.center_3d)
+
+    return sorted(intersections, key=lambda t: t[0])
 
 
 def get_color(trace_ray, intersections, scene, rec_depth):
@@ -270,6 +288,20 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
     P0 = np.copy(screen_orig_point)
     screen = np.zeros((image_height, image_width, 3))
 
+    np.arange(image_height)
+
+    a = np.arange(image_width)
+    b = np.arange(image_height)
+
+    c, d = np.meshgrid(a, b)
+    c = c[..., np.newaxis].repeat(3, axis=2)
+    d = d[..., np.newaxis].repeat(3, axis=2)
+    ray_points_array = P0 + Vx * c + Vy * d
+    ray_direction = ray_points_array - camera.pos_3d
+    ray_direction_normalized = np.divide(ray_direction, np.linalg.norm(ray_direction, axis=2, keepdims=True))
+
+    # find_intersections(camera.pos_3d, ray_direction_straight, scene)
+
     for i in range(image_height):
         p = np.copy(P0)
         for j in range(image_width):
@@ -303,7 +335,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
 
             else:  # not fisheye
                 ray_direction_straight = normalize_vector(p - camera.pos_3d)
-                intersections = find_intersections(camera.pos_3d, ray_direction_straight, scene)
+                intersections = find_intersections(camera.pos_3d, ray_direction_straight, scene, ray_direction_normalized)
                 color = trace_ray_from_camera(intersections, scene)
                 screen[i][j] = np.clip(color, 0, 1)
             p += Vx
