@@ -232,7 +232,7 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
 
 def get_color(trace_ray, intersections, scene, rec_depth):
     if intersections == []:
-        return np.array([1, 1, 1])
+        return scene.sett.background_color_3d
 
     intersect_object = intersections[0]
     trans = intersect_object[2].get_material(scene).trans
@@ -244,9 +244,8 @@ def get_color(trace_ray, intersections, scene, rec_depth):
 
 
 def trace_ray_from_camera(intersections, scene):
-    bg = scene.sett.background_color_3d
     if intersections == []:
-        return bg
+        return scene.sett.background_color_3d
 
     V = normalize_vector(intersections[0][1] - scene.camera.pos_3d)
     return get_color(V, intersections, scene, scene.sett.rec_max)
