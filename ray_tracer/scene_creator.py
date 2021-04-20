@@ -15,6 +15,8 @@ def normalize_vector(vector):
 def length_vector(vector):
     return np.linalg.norm(vector)
 
+def dot_product(u, v):
+    return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]
 
 def arbitrary_vector_in_plane(normal, D, xyz):
     V = np.zeros(3)
@@ -26,7 +28,7 @@ def arbitrary_vector_in_plane(normal, D, xyz):
 
 
 def reflected_vector(V, N):
-    return V - 2 * np.dot(V, N) * N
+    return V - 2 * dot_product(V, N) * N
 
 
 def get_transparency_color(trace_ray, intersections, scene, rec_depth):
@@ -43,7 +45,7 @@ def get_reflection_color(V, intersect_object, scene, rec_depth):
     intersect_surface = intersect_object[2]
     ref_color = intersect_surface.get_material(scene).reflection_color
     bg = scene.sett.background_color_3d
-    if rec_depth <= 0:
+    if rec_depth <= 0 or np.sum(ref_color) <= 0.0:
         return bg * ref_color
 
     # V = normalize_vector(camera.pos_3d - intersect_point)
@@ -82,18 +84,33 @@ def get_diff_spec_color(intersect_object, scene):
     for i, light in enumerate(scene.lights):
         # Idiff = Kd * Ip * dot(N,P)
         L = normalize_vector(light.pos_3d - intersect_point)
-        cos_theta = np.dot(N, L)
+        cos_theta = dot_product(N, L)
         if cos_theta > 0:
             color += Kd * cos_theta * lig_intensity_list[i] * light.color_3d
         # Ispec = Ks * Ip * dot(H,N) ** n
         V = normalize_vector(scene.camera.pos_3d - intersect_point)
-        H = normalize_vector(V + L)
-        cos_phi = np.dot(H, N)
+        R = 2 * dot_product(L, N) * N - L
+        cos_phi = dot_product(V, R)
+        # H = normalize_vector(V + L)
+        # cos_phi = dot_product(H, N)
         if cos_phi > 0:
             color += Ks * lig_intensity_list[i] * np.power(cos_phi, n) * light.color_3d * light.spec
-
     return color
 
+
+def hard_shadow(intersect_object, light, scene):
+    eps = 1e-10
+    intersect_point = intersect_object[1]
+    ray = normalize_vector(intersect_point - light.pos_3d)
+    intersections = find_intersections(light.pos_3d, ray, scene)
+    assert intersections != []
+
+    nearest_object = intersections[0]
+    if nearest_object[2] == intersect_object[2]: 
+        if length_vector(intersect_point - nearest_object[1]) < eps:
+            return (1 - light.shadow) * 1 + light.shadow * 1
+
+    return 1 - light.shadow
 
 def soft_shadow(intersect_object, scene):
     intersect_point = intersect_object[1]
@@ -102,11 +119,15 @@ def soft_shadow(intersect_object, scene):
 
     N = scene.sett.shadow_rays
     for light in scene.lights:
-        light_intensity = 0
         L = normalize_vector(intersect_point - light.pos_3d)
         # coefficients of perpendicular plane to the ray
         # from light to intersection point
-        D = -np.dot(light.pos_3d, L)
+        D = -dot_product(light.pos_3d, L)
+
+        if light.width <= 0:
+            light_intensity = hard_shadow(intersect_object, light, scene)
+            light_intensity_list.append(light_intensity)
+            continue
 
         V1 = arbitrary_vector_in_plane(L, D, light.pos_3d) / light.width
         V2 = np.cross(V1, L) / light.width
@@ -126,7 +147,7 @@ def soft_shadow(intersect_object, scene):
 
                 li_intersect_obj = intersections[0]
                 if li_intersect_obj[2] == intersect_object[2]: 
-                    if np.linalg.norm(intersect_point - li_intersect_obj[1]) < eps:
+                    if length_vector(intersect_point - li_intersect_obj[1]) < eps:
                         num_hits += 1
 
         hit_ratio = num_hits / (N * N)
@@ -139,7 +160,7 @@ def soft_shadow(intersect_object, scene):
 def get_plane_intersection(ray_origin, ray_direction, plane):
     N = plane.normal_3d
     d = -plane.offset
-    t = -(np.dot(ray_origin, N) + d) / np.dot(ray_direction, N)
+    t = -(dot_product(ray_origin, N) + d) / dot_product(ray_direction, N)
     if t <= 1e-4:
         return None
 
@@ -161,11 +182,11 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
     for sphere in scene.spheres:
         # geometric method
         L = sphere.center_3d - ray_origin
-        t_ca = np.dot(L, ray_direction)
+        t_ca = dot_product(L, ray_direction)
         if t_ca < 0:
             continue  # no intersection
 
-        d_power2 = np.dot(L, L) - t_ca ** 2
+        d_power2 = dot_product(L, L) - t_ca ** 2
 
         r_power2 = sphere.radius ** 2
         if d_power2 > r_power2:
@@ -266,7 +287,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
 
 
 def main():
-    env_path = r"scenes\Room1.txt"
+    env_path = r"scenes\Transparency.txt"
     out_path = r"scenes\Pool_test.png"
     scene = Scene(env_path, out_path)
     ray_casting(scene)
