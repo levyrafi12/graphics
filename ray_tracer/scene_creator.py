@@ -30,37 +30,27 @@ def arbitrary_vector_in_plane(normal, D, xyz):
 def reflected_vector(V, N):
     return V - 2 * dot_product(V, N) * N
 
-
-def get_transparency_color(trace_ray, intersections, scene, rec_depth):
-    bg = scene.sett.background_color_3d
-    intersect_object = intersections[0]
-    trans = intersect_object[2].get_material(scene).trans
-    if rec_depth <= 0 or trans <= 0:
-        return bg
-
-    behind_intersections = intersections[1:]
-    return get_color(trace_ray, behind_intersections, scene, rec_depth - 1)
-
 def get_reflection_color(V, intersect_object, scene, rec_depth):
     intersect_surface = intersect_object[2]
     ref_color = intersect_surface.get_material(scene).reflection_color
     bg = scene.sett.background_color_3d
-    if rec_depth <= 0 or np.sum(ref_color) <= 0.0:
-        return bg * ref_color
+    eps = 1e-5
+    if np.sum(ref_color) < eps:
+        return np.zeros(3)
 
     # V = normalize_vector(camera.pos_3d - intersect_point)
     N = intersect_object[3]
     R = reflected_vector(V, N)
 
     intersect_point = intersect_object[1]
-    # shifted_point = intersect_point + 1e-5 * N
-    intersections = find_intersections(intersect_point, R, scene)
+    shifted_point = intersect_point + 1e-5 * N
+    # intersections = find_intersections(intersect_point, R, scene)
+    intersections = find_intersections(shifted_point, R, scene)
     if intersections == []:
         return ref_color * bg
 
     nearest_object = intersections[0]
-    if nearest_object[2] == intersect_surface: # maybe a bug
-        return np.zeros(3)
+    assert(nearest_object[2] != intersect_surface)
 
     return ref_color * get_color(R, intersections, scene, rec_depth - 1)
 
@@ -85,6 +75,8 @@ def get_diff_spec_color(intersect_object, scene):
         # Idiff = Kd * Ip * dot(N,P)
         L = normalize_vector(light.pos_3d - intersect_point)
         cos_theta = dot_product(N, L)
+        if False and intersect_object[2].mat_ind + 1 == 4:
+            print("cos theta {}".format(cos_theta))
         if cos_theta > 0:
             color += Kd * cos_theta * lig_intensity_list[i] * light.color_3d
         # Ispec = Ks * Ip * dot(H,N) ** n
@@ -93,13 +85,18 @@ def get_diff_spec_color(intersect_object, scene):
         cos_phi = dot_product(V, R)
         # H = normalize_vector(V + L)
         # cos_phi = dot_product(H, N)
+        if False and intersect_object[2].mat_ind + 1 == 4:
+            print("cos phi {}".format(cos_theta))
         if cos_phi > 0:
             color += Ks * lig_intensity_list[i] * np.power(cos_phi, n) * light.color_3d * light.spec
+
+        if False and intersect_object[2].mat_ind + 1 == 4:
+            print("color blue sphere diff_spec {} {}".format(color, lig_intensity_list[i]))
     return color
 
 
 def hard_shadow(intersect_object, light, scene):
-    eps = 1e-10
+    eps = 1e-5
     intersect_point = intersect_object[1]
     ray = normalize_vector(intersect_point - light.pos_3d)
     intersections = find_intersections(light.pos_3d, ray, scene)
@@ -115,7 +112,7 @@ def hard_shadow(intersect_object, light, scene):
 def soft_shadow(intersect_object, scene):
     intersect_point = intersect_object[1]
     light_intensity_list = []
-    eps = 1e-10
+    eps = 1e-5
 
     N = scene.sett.shadow_rays
     for light in scene.lights:
@@ -148,6 +145,10 @@ def soft_shadow(intersect_object, scene):
                 li_intersect_obj = intersections[0]
                 if li_intersect_obj[2] == intersect_object[2]: 
                     if length_vector(intersect_point - li_intersect_obj[1]) < eps:
+                        if False and intersect_object[2].mat_ind + 1 == 4:
+                            print("light to blue sphere intersection")
+                        if False and intersect_object[2].mat_ind + 1 == 3:
+                            print("light to red sphere intersection")
                         num_hits += 1
 
         hit_ratio = num_hits / (N * N)
@@ -252,12 +253,14 @@ def find_intersections(ray_origin, ray_direction, scene: Scene):
 
 
 def get_color(trace_ray, intersections, scene, rec_depth):
-    if intersections == []:
+    if intersections == [] or rec_depth <= 0:
         return scene.sett.background_color_3d
 
     intersect_object = intersections[0]
     trans = intersect_object[2].get_material(scene).trans
-    trans_color = get_transparency_color(trace_ray, intersections, scene, rec_depth)
+    trans_color = np.zeros(3)
+    if trans > 0:
+        trans_color = get_color(trace_ray, intersections[1:], scene, rec_depth - 1)
     diff_spec = get_diff_spec_color(intersect_object, scene)
     ref_color = get_reflection_color(trace_ray, intersect_object, scene, rec_depth)
 
@@ -337,7 +340,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
 
 
 def main():
-    env_path = r"scenes\Transparency.txt"
+    env_path = r"scenes\Transparency_3_green.txt"
     out_path = r"scenes\Pool_test.png"
     scene = Scene(env_path, out_path)
     ray_casting(scene)
