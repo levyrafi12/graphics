@@ -50,7 +50,8 @@ def get_reflection_color(V, intersect_object, scene, rec_depth):
         return ref_color * bg
 
     nearest_object = intersections[0]
-    assert(nearest_object[2] != intersect_surface)
+    if nearest_object[2] == intersect_surface:
+        return np.zeros(3)
 
     return ref_color * get_color(R, intersections, scene, rec_depth - 1)
 
