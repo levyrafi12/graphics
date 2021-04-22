@@ -54,7 +54,7 @@ def get_reflection_color(V, intersect_object, scene, rec_depth):
 
     return ref_color * get_color(R, intersections, scene, rec_depth - 1)
 
-def get_diff_spec_color(intersect_object, scene):
+def get_diff_spec_color(V, intersect_object, scene):
     soft_shadow_flag = True
 
     # list of point light intensity (Ip)
@@ -80,9 +80,9 @@ def get_diff_spec_color(intersect_object, scene):
         if cos_theta > 0:
             color += Kd * cos_theta * lig_intensity_list[i] * light.color_3d
         # Ispec = Ks * Ip * dot(H,N) ** n
-        V = normalize_vector(scene.camera.pos_3d - intersect_point)
+        # V = normalize_vector(scene.camera.pos_3d - intersect_point)
         R = 2 * dot_product(L, N) * N - L
-        cos_phi = dot_product(V, R)
+        cos_phi = dot_product(-V, R)
         # H = normalize_vector(V + L)
         # cos_phi = dot_product(H, N)
         if False and intersect_object[2].mat_ind + 1 == 4:
@@ -261,7 +261,7 @@ def get_color(trace_ray, intersections, scene, rec_depth):
     trans_color = np.zeros(3)
     if trans > 0:
         trans_color = get_color(trace_ray, intersections[1:], scene, rec_depth - 1)
-    diff_spec = get_diff_spec_color(intersect_object, scene)
+    diff_spec = get_diff_spec_color(trace_ray, intersect_object, scene)
     ref_color = get_reflection_color(trace_ray, intersect_object, scene, rec_depth)
 
     return trans * trans_color + (1 - trans) * diff_spec + ref_color
@@ -340,7 +340,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
 
 
 def main():
-    env_path = r"scenes\Transparency_3_green.txt"
+    env_path = r"scenes\Pool.txt"
     out_path = r"scenes\Pool_test.png"
     scene = Scene(env_path, out_path)
     ray_casting(scene)
