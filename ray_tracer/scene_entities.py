@@ -174,13 +174,12 @@ class Material:
 
 
 class Scene:
-	def __init__(self, scene_file, scene_out):
+	def __init__(self, scene_file):
 		self.planes = []
 		self.boxes = []
 		self.spheres = []
 		self.lights = []
 		self.materials = []
-		self.scene_out = scene_out
 		self.camera = None  # type: Optional[Camera]
 		self.sett = None
 		self.parse(scene_file)
@@ -215,5 +214,5 @@ class Scene:
 if __name__ == "__main__":
 	env_path = r"scenes\Pool.txt"
 	out_path = r"Pool_test.png"
-	scene_object = Scene(env_path, out_path)
+	scene_object = Scene(env_path)
 	print('done')
