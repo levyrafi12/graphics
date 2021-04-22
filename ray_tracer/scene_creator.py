@@ -43,9 +43,9 @@ def get_reflection_color(V, intersect_object, scene, rec_depth):
     R = reflected_vector(V, N)
 
     intersect_point = intersect_object[1]
-    shifted_point = intersect_point + 1e-5 * N
+    # shifted_point = intersect_point + 1e-5 * N
     # intersections = find_intersections(intersect_point, R, scene)
-    intersections = find_intersections(shifted_point, R, scene)
+    intersections = find_intersections(intersect_point, R, scene)
     if intersections == []:
         return ref_color * bg
 
@@ -340,7 +340,7 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
 
 
 def main():
-    env_path = r"scenes\Pool.txt"
+    env_path = r"scenes\Pool_box_small.txt"
     out_path = r"scenes\Pool_test.png"
     scene = Scene(env_path, out_path)
     ray_casting(scene)
