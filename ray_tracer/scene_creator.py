@@ -1,11 +1,11 @@
 import math
 import random
+import sys
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-# from ray_tracer.scene_entities import Scene
 from scene_entities import Scene
 
 def normalize_vector(vector):
@@ -335,15 +335,25 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
         if i > 0 and i % 50 == 0:
             print(time.ctime())
 
-    plt.imshow(screen)
-    plt.show()
+    return screen
 
 
 def main():
-    env_path = r"scenes\Pool.txt"
-    out_path = r"scenes\Pool_test.png"
-    scene = Scene(env_path, out_path)
-    ray_casting(scene)
+    scene_file_path = sys.argv[1]
+    out_path = sys.argv[2]
+    if len(sys.argv) > 3:
+        image_width = int(sys.argv[3])
+    else:
+        image_width = 500
+    if len(sys.argv) > 4:
+        image_height = int(sys.argv[4])
+    else:
+        image_height = 500
+
+    scene = Scene(scene_file_path)
+    screen = ray_casting(scene, image_width, image_height)
+
+    plt.imsave(out_path, screen)
 
 
 if __name__ == "__main__":
