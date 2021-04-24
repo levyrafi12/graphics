@@ -185,7 +185,6 @@ class Scene:
 		self.parse(scene_file)
 
 	def parse(self, scene_file):
-		# print(scene_file)
 		f = open(scene_file, "r")
 		lines = f.readlines()
 		for line in lines:

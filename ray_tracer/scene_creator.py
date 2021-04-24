@@ -84,25 +84,54 @@ def get_diff_spec_color(V, intersect_object, scene):
 
     return color
 
-
-def hard_shadow(intersect_object, light, scene):
+# If the point is reached immediately, return 1
+# If an opaque object is on the way, return 0
+# If point is reached through transparent objects return a value between 0 and 1
+# that is equal to the trans coeff multiplication of all the transparent objects 
+# being crossed
+def shadow_reach_via_trans_objs(li_intersections, intersect_obj, scene):
+    intersect_point = intersect_obj[1]
+    intersect_surface = intersect_obj[2]
     eps = 1e-5
-    intersect_point = intersect_object[1]
+    trans_val = 1
+
+    for i, li_intersect_obj in enumerate(li_intersections):
+        li_intersect_obj = li_intersections[i]
+        if li_intersect_obj[2] != intersect_surface: 
+            if li_intersect_obj[2].get_material(scene).trans <= 0:
+                return 0
+        else:        
+            if length_vector(intersect_point - li_intersect_obj[1]) < eps:
+                return trans_val
+            else:
+                return 0
+        trans_val *= li_intersect_obj[2].get_material(scene).trans
+       
+    return trans_val
+
+def hard_shadow(intersect_obj, light, scene):
+    eps = 1e-5
+    intersect_point = intersect_obj[1]
     ray = normalize_vector(intersect_point - light.pos_3d)
     intersections = find_intersections(light.pos_3d, ray, scene)
     assert intersections != []
 
     nearest_object = intersections[0]
-    if nearest_object[2] == intersect_object[2]: 
+    if nearest_object[2] == intersect_obj[2]: 
         if length_vector(intersect_point - nearest_object[1]) < eps:
             return (1 - light.shadow) * 1 + light.shadow * 1
 
-    return 1 - light.shadow
+
+    trans_value = shadow_reach_via_trans_objs(intersections, intersect_obj, scene)
+
+    return 1 - light.shadow + trans_value
+
 
 def soft_shadow(intersect_object, scene):
     intersect_point = intersect_object[1]
     light_intensity_list = []
-    eps = 1e-5
+    bonus_flag = True
+   
 
     N = scene.sett.shadow_rays
     for light in scene.lights:
@@ -132,6 +161,9 @@ def soft_shadow(intersect_object, scene):
                 if intersections == []:
                     continue
 
+                if bonus_flag:
+                    num_hits += shadow_reach_via_trans_objs(intersections, intersect_object, scene)
+                    continue
                 li_intersect_obj = intersections[0]
                 if li_intersect_obj[2] == intersect_object[2]: 
                     if length_vector(intersect_point - li_intersect_obj[1]) < eps:
