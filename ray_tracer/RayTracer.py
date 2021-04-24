@@ -1,12 +1,12 @@
 import math
 import random
 import sys
-import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from scene_entities import Scene
+
 
 def normalize_vector(vector):
     return vector / np.linalg.norm(vector)
@@ -293,7 +293,6 @@ def trace_ray_from_camera(intersections, scene):
     return get_color(V, intersections, scene, scene.sett.rec_max)
 
 def ray_casting(scene: Scene, image_width=500, image_height=500):
-    print(time.ctime())
     camera = scene.camera
     Vz = normalize_vector(camera.look_at_3d - camera.pos_3d)  # towards
 
@@ -350,8 +349,6 @@ def ray_casting(scene: Scene, image_width=500, image_height=500):
                 screen[i][j] = np.clip(color, 0, 1)
             p += Vx
         P0 += Vy
-        if i > 0 and i % 50 == 0:
-            print(time.ctime())
 
     return screen
 
@@ -372,6 +369,7 @@ def main():
     screen = ray_casting(scene, image_width, image_height)
 
     plt.imsave(out_path, screen)
+
 
 if __name__ == "__main__":
     main()
